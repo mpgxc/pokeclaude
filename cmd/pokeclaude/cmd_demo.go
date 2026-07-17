@@ -14,18 +14,24 @@ import (
 
 func demoCmd() *cobra.Command {
 	var interval time.Duration
+	var mode string
 	cmd := &cobra.Command{
 		Use:   "demo",
 		Short: "roda a interface com eventos sintéticos (sem Claude Code)",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts, err := parseModeOptions(mode)
+			if err != nil {
+				return err
+			}
 			ch := make(chan protocol.Envelope, 64)
 			go generateDemo(ch, interval)
-			p := tea.NewProgram(tui.New(ch), tea.WithAltScreen())
-			_, err := p.Run()
+			p := tea.NewProgram(tui.New(ch, opts...), tea.WithAltScreen())
+			_, err = p.Run()
 			return err
 		},
 	}
 	cmd.Flags().DurationVar(&interval, "interval", 1500*time.Millisecond, "intervalo entre eventos sintéticos")
+	cmd.Flags().StringVar(&mode, "mode", "zona", "modo inicial: zona | space")
 	return cmd
 }
 

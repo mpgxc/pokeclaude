@@ -71,7 +71,11 @@ func RenderFrame(v world.View, w, h int) string {
 	lay := ComputeLayout(w, h)
 	f := NewFrame(w, h)
 	drawChrome(f, v, lay)
-	drawMap(f, v)
+	if v.Mode == world.ModeSpaceDrift {
+		drawSpace(f, v)
+	} else {
+		drawMap(f, v)
+	}
 	return f.Render()
 }
 
@@ -103,15 +107,26 @@ func drawChrome(f *Frame, v world.View, lay Layout) {
 }
 
 func drawHeader(f *Frame, v world.View, lay Layout) {
-	f.SetString(2, lay.HeaderY, "PokéClaude", titleStyle)
-	counts := fmt.Sprintf("%d agentes · %d zonas", len(v.Agents), v.ZoneTotal)
-	f.SetString(14, lay.HeaderY, counts, dimStyle)
-	if v.PageCount > 1 {
-		pg := fmt.Sprintf("[pág %d/%d]", v.Page+1, v.PageCount)
-		f.SetString(14+runewidth.StringWidth(counts)+2, lay.HeaderY, pg, dimStyle)
+	x := f.SetString(2, lay.HeaderY, "PokéClaude", titleStyle)
+	x = f.SetString(x+1, lay.HeaderY, "· "+v.Mode.String(), Style{Fg: "141", Bold: true})
+	counts := fmt.Sprintf("  %d agentes · %d zonas", len(v.Agents), v.ZoneTotal)
+	x = f.SetString(x, lay.HeaderY, counts, dimStyle)
+	if v.Mode != world.ModeSpaceDrift && v.PageCount > 1 {
+		pg := fmt.Sprintf(" [pág %d/%d]", v.Page+1, v.PageCount)
+		x = f.SetString(x, lay.HeaderY, pg, dimStyle)
 	}
+
+	// right-aligned: controls hint + clock
 	clock := v.Now.Format("15:04:05")
 	f.SetString(lay.W-2-runewidth.StringWidth(clock), lay.HeaderY, clock, dimStyle)
+	hint := "[m] modo"
+	if v.Mode == world.ModeSpaceDrift {
+		hint = "[m] modo · [h] hiper"
+	}
+	hx := lay.W - 4 - runewidth.StringWidth(clock) - runewidth.StringWidth(hint)
+	if hx > x+1 {
+		f.SetString(hx, lay.HeaderY, hint, Style{Fg: "97"})
+	}
 }
 
 func drawFooter(f *Frame, v world.View, lay Layout) {

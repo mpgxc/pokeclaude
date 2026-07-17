@@ -44,6 +44,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.paused = !m.paused
 		case "tab":
 			m.world.NextPage()
+		case "m":
+			m.world.CycleMode()
+		case "h", " ":
+			m.world.TriggerWarp()
 		}
 	}
 	return m, nil

@@ -70,16 +70,49 @@ e use o Claude Code normalmente em outro terminal — os Pokémon aparecem sozin
 
 ### Teclas
 
-`q`/`Ctrl+C` sai · `p` pausa · `Tab` alterna páginas de zonas.
+`q`/`Ctrl+C` sai · `p` pausa · `Tab` alterna páginas de zonas · `m` alterna
+o **modo de movimentação** · `h` (ou `Espaço`) dispara a **Hiper Velocidade**
+no Space Drift.
 
 ## Experimente sem Claude Code
 
 ```sh
-pokeclaude demo
+pokeclaude demo                 # modo padrão (zonas)
+pokeclaude demo --mode space    # já começa no Space Drift
 ```
 
 Gera sessões falsas que nascem, pensam, usam ferramentas, chamam subagentes,
 erram e terminam — ótimo para ver tudo em movimento.
+
+## Modos de movimentação
+
+Aperte `m` para alternar entre os modos (ou use `--mode` ao iniciar).
+
+### Zonas (padrão)
+
+Cada Pokémon caminha dentro da zona do seu diretório de trabalho, com balão de
+pensamento mostrando a tarefa.
+
+### Space Drift 🚀
+
+Em vez de caminhar, os Pokémon pilotam naves espaciais e derivam pelo universo:
+
+- **Fundo com efeito de velocidade** — o campo estelar rola criando linhas de
+  movimento; acelera quando alguma nave está trabalhando (impulso).
+- **Obstáculos** — asteroides `(@)`/`o` e cometas `*` cruzam o mapa; as naves
+  **desviam** automaticamente do que estiver na rota.
+- **Tiros** — as naves **disparam lasers** contra asteroides e cometas à frente,
+  destruindo-os com explosões.
+- **Colisões** — bater num obstáculo sacode a nave (flash vermelho) e destrói o
+  obstáculo.
+- **Dobra Espacial (Hiper Velocidade)** — aperte `h`/`Espaço`: todas as naves
+  dão um **salto quântico** para outra região do mapa, com um efeito de
+  **distorção espaço-temporal** (o campo estelar se estica em túnel e cada nave
+  deixa um rastro de dobra `=`).
+
+O estado do agente modula a nave: **Working** = impulso (mais rápido, com chama
+de propulsor), **Thinking** = deriva lenta, **Error** = dano/tremida,
+**Idle** = cruzeiro.
 
 ## Estados
 
@@ -103,8 +136,10 @@ internal/protocol/    # tipos compartilhados hook ↔ daemon (HookEvent, Envelop
 internal/hook/        # shim: stdin → Envelope → POST socket
 internal/ingest/      # unix socket http server → chan Envelope
 internal/world/       # mundo: zonas, agentes, máquina de estados, reducer, movimento
+                      #   mode.go + space.go = modo Space Drift (naves, física, warp)
 internal/dex/         # espécies + sprites embutidos (embed.FS)
 internal/render/      # framebuffer, sprites, balões, HUD, modo compacto
+                      #   space.go = renderer do Space Drift (starfield, naves, warp)
 internal/tui/         # bubbletea: game loop 20fps
 assets/sprites/       # sprites ASCII originais (.txt)
 ```
@@ -130,8 +165,8 @@ go run ./cmd/pokeclaude demo
 
 Cobertura de testes: reducer (evento → estado), bin-packing de zonas, geração de
 balões (largura, quebra, cauda), alinhamento de runas largas, determinismo do
-dex, tolerância do shim a JSON malformado e o transporte shim→daemon
-fim-a-fim.
+dex, tolerância do shim a JSON malformado, o transporte shim→daemon fim-a-fim e
+o Space Drift (física de naves, colisões laser/nave × obstáculo, warp e limites).
 
 ## Requisitos
 

@@ -11,10 +11,15 @@ import (
 
 func tuiCmd() *cobra.Command {
 	var debug bool
+	var mode string
 	cmd := &cobra.Command{
 		Use:   "tui",
 		Short: "sobe o daemon e a interface (foreground)",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts, err := parseModeOptions(mode)
+			if err != nil {
+				return err
+			}
 			path := ingest.SocketPath()
 			debugPath := ""
 			if debug {
@@ -32,11 +37,12 @@ func tuiCmd() *cobra.Command {
 				}
 			}()
 
-			p := tea.NewProgram(tui.New(srv.Events()), tea.WithAltScreen())
+			p := tea.NewProgram(tui.New(srv.Events(), opts...), tea.WithAltScreen())
 			_, err = p.Run()
 			return err
 		},
 	}
 	cmd.Flags().BoolVar(&debug, "debug", false, "grava os eventos crus em /tmp/pokeclaude-events.jsonl")
+	cmd.Flags().StringVar(&mode, "mode", "zona", "modo inicial: zona | space")
 	return cmd
 }

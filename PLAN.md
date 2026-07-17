@@ -334,3 +334,43 @@ Path: `$XDG_RUNTIME_DIR/pokeclaude.sock`, fallback `$TMPDIR/pokeclaude-$UID.sock
 - `dex/dex_test.go` — `SpeciesFor` determinístico e distribuição uniforme.
 - `hook/shim_test.go` — JSON malformado não panica.
 - `ingest/integration_test.go` — transporte shim → daemon fim-a-fim.
+- `world/space_test.go` — física do Space Drift (limites, warp, colisões, cap de
+  obstáculos, auto-fire).
+- `render/space_test.go` — render do Space Drift (dimensões, warp sem panic,
+  orientação da nave).
+
+---
+
+## 17. Modos de movimentação (extensível)
+
+O `World` tem um `Mode` (`ModeZone` | `ModeSpaceDrift`), alternável em runtime
+com `m`. O reducer e a máquina de estados dos agentes são **compartilhados**
+entre os modos; só a camada de movimento e de render muda.
+
+- **Tick**: `switch mode` — zona usa `Agent.Step` + repulsão; Space Drift chama
+  `SpaceField.step`.
+- **Snapshot**: em Space Drift, popula `View.Space` (naves, obstáculos, tiros,
+  explosões, estrelas, intensidade de warp).
+- **Render**: `RenderFrame` ramifica em `drawMap` ou `drawSpace`.
+
+### Space Drift
+
+`internal/world/space.go` — sub-simulação:
+
+- **Naves** (uma por agente): deriva com velocidade, wrap toroidal nas bordas,
+  cruzeiro modulado pelo estado (impulso em Working, lento em Thinking).
+- **Auto-desvio**: acelera perpendicular ao obstáculo mais próximo à frente.
+- **Auto-fire**: dispara laser no obstáculo à frente dentro do alcance, com
+  cooldown.
+- **Obstáculos**: asteroides e cometas nascem das bordas, atravessam e saem;
+  cap proporcional à área.
+- **Colisões**: laser×obstáculo (dano + explosão) e nave×obstáculo (tremida +
+  knockback).
+- **Dobra espacial (warp)**: `triggerWarp` teleporta cada nave para outro
+  quadrante no meio da animação; `warp` global alimenta o efeito de distorção.
+- **Starfield**: rola pra esquerda (linhas de velocidade); acelera com impulso
+  e explode em túnel durante o warp.
+
+`internal/render/space.go` desenha tudo (naves orientadas por velocidade,
+chama de propulsor, rastro de dobra `=`, explosões, cometas com cauda) com
+clipping na área do mapa.

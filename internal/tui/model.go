@@ -22,13 +22,25 @@ type Model struct {
 	last   time.Time
 }
 
+// Option customizes a Model at construction.
+type Option func(*Model)
+
+// WithMode sets the initial movement mode (e.g. Space Drift).
+func WithMode(mode world.Mode) Option {
+	return func(m *Model) { m.world.SetMode(mode) }
+}
+
 // New creates a Model reading events from ch.
-func New(ch <-chan protocol.Envelope) Model {
-	return Model{
+func New(ch <-chan protocol.Envelope, opts ...Option) Model {
+	m := Model{
 		world:  world.New(world.Rect{X: 1, Y: 3, W: 78, H: 14}),
 		events: ch,
 		last:   time.Now(),
 	}
+	for _, o := range opts {
+		o(&m)
+	}
+	return m
 }
 
 // Messages driving the loop.

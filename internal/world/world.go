@@ -31,6 +31,8 @@ type World struct {
 	page        int
 	nextZoneIdx int
 	rng         *rand.Rand
+	mode        Mode
+	space       *SpaceField
 }
 
 // New creates an empty world with the given map bounds, seeded from the clock.
@@ -40,11 +42,13 @@ func New(bounds Rect) *World {
 
 // NewWithSeed is New with an explicit RNG seed, for deterministic tests.
 func NewWithSeed(bounds Rect, seed int64) *World {
+	rng := rand.New(rand.NewSource(seed))
 	return &World{
 		zones:  map[string]*Zone{},
 		agents: map[AgentID]*Agent{},
 		bounds: bounds,
-		rng:    rand.New(rand.NewSource(seed)),
+		rng:    rng,
+		space:  newSpaceField(bounds, rng),
 	}
 }
 
@@ -54,6 +58,7 @@ func (w *World) Resize(bounds Rect) {
 	defer w.mu.Unlock()
 	w.bounds = bounds
 	w.relayout()
+	w.space.setBounds(bounds)
 }
 
 // Bounds returns the current map bounds.
@@ -103,14 +108,18 @@ func (w *World) Tick(dt float32, now time.Time) {
 		w.applyTimeouts(a, now)
 	}
 
-	// movement
-	for _, a := range w.agents {
-		z := w.zones[a.ZoneID]
-		a.Step(dt, z, w.rng)
+	// movement depends on the active mode
+	switch w.mode {
+	case ModeSpaceDrift:
+		w.space.step(dt, w.agents)
+	default:
+		for _, a := range w.agents {
+			z := w.zones[a.ZoneID]
+			a.Step(dt, z, w.rng)
+		}
+		// soft repulsion between agents sharing a zone
+		w.repel(dt)
 	}
-
-	// soft repulsion between agents sharing a zone
-	w.repel(dt)
 
 	// removals (fade timers, dead sessions)
 	w.gc(now)
@@ -342,6 +351,8 @@ type View struct {
 	Page      int
 	PageCount int
 	Now       time.Time
+	Mode      Mode
+	Space     SpaceView // populated only in Space Drift mode
 }
 
 // Snapshot returns a consistent copy of the world for rendering.
@@ -349,7 +360,10 @@ func (w *World) Snapshot(now time.Time) View {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	v := View{Bounds: w.bounds, Now: now, Page: w.page, ZoneTotal: len(w.zones)}
+	v := View{Bounds: w.bounds, Now: now, Page: w.page, ZoneTotal: len(w.zones), Mode: w.mode}
+	if w.mode == ModeSpaceDrift {
+		v.Space = w.space.snapshot()
+	}
 	n := len(w.zones)
 	if n == 0 {
 		v.PageCount = 1
