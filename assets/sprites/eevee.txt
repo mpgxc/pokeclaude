@@ -1,0 +1,15 @@
+# name: eevee
+# color: 130
+# frames: 3
+--- idle
+ (n_n)
+ /(o)\
+  w w
+--- walk-a
+ (n_n)
+ /(o)\
+  w/w
+--- walk-b
+ (n_n)
+ /(o)\
+  w\w

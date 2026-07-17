@@ -1,0 +1,15 @@
+# name: bulbasaur
+# color: 40
+# frames: 3
+--- idle
+ (u_u)
+ (~V~)
+  m m
+--- walk-a
+ (u_u)
+ (~V~)
+  m/m
+--- walk-b
+ (u_u)
+ (~V~)
+  m\m
