@@ -1,0 +1,15 @@
+# name: squirtle
+# color: 39
+# frames: 3
+--- idle
+ (o_o)
+ <[_]>
+  J L
+--- walk-a
+ (o_o)
+ <[_]>
+  J/L
+--- walk-b
+ (o_o)
+ <[_]>
+  L\J

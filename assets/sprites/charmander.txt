@@ -1,0 +1,15 @@
+# name: charmander
+# color: 208
+# frames: 3
+--- idle
+ (>_<)
+ /|o|\
+  d b
+--- walk-a
+ (>_<)
+ /|o|\
+  d/b
+--- walk-b
+ (>_<)
+ /|o|\
+  b\d

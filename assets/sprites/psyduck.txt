@@ -1,0 +1,15 @@
+# name: psyduck
+# color: 220
+# frames: 3
+--- idle
+ (@_@)
+ <|Y|>
+  L J
+--- walk-a
+ (@_@)
+ <|Y|>
+  L/J
+--- walk-b
+ (@_@)
+ <|Y|>
+  J\L

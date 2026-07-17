@@ -1,0 +1,12 @@
+# build output
+/pokeclaude
+/dist/
+*.out
+
+# debug dumps
+pokeclaude-events.jsonl
+
+# editor
+.idea/
+.vscode/
+*.swp

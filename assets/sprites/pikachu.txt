@@ -1,0 +1,15 @@
+# name: pikachu
+# color: 226
+# frames: 3
+--- idle
+ (^w^)
+ /|z|\
+  ' '
+--- walk-a
+ (^w^)
+ /|z|\
+  '/'
+--- walk-b
+ (^w^)
+ /|z|\
+  '\'
