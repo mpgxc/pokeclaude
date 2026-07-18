@@ -165,6 +165,45 @@ func TestKnockoutEndsRound(t *testing.T) {
 	}
 }
 
+func TestEndlessWaitsForInput(t *testing.T) {
+	a, b := speciesPair()
+	// RoundSeconds < 0 => no timer; idle remotes never act
+	m := Build(Config{Seed: 1, RoundsToWin: 2, RoundSeconds: -1},
+		a, b, NewRemote("A"), NewRemote("B"))
+	// simulate ~10 minutes with no commands
+	for i := 0; i < 60*600; i++ {
+		m.Advance(1.0 / 60.0)
+	}
+	if m.Over() {
+		t.Error("endless match should not finish on its own without commands")
+	}
+	sa, sb := m.Score()
+	if sa != 0 || sb != 0 {
+		t.Errorf("no rounds should be decided while idle: %d–%d", sa, sb)
+	}
+}
+
+func TestEndlessEndsOnKO(t *testing.T) {
+	a, b := speciesPair()
+	m := Build(Config{Seed: 1, RoundsToWin: 1, RoundSeconds: -1},
+		a, b, NewRemote("A"), NewRemote("B"))
+	for m.phase == PhaseIntro {
+		m.step(fixedDT)
+	}
+	m.A.X, m.B.X = 40, 48
+	m.B.HP = 5
+	ra := m.A.Ctrl.(*RemoteController)
+	for i := 0; i < 60*30 && !m.Over(); i++ {
+		if m.A.State == StateIdle {
+			ra.Set(ActHeavy)
+		}
+		m.step(fixedDT)
+	}
+	if !m.Over() || m.Winner() != 0 {
+		t.Errorf("A should win by KO in endless mode; over=%v winner=%d", m.Over(), m.Winner())
+	}
+}
+
 func TestStatsDeterministic(t *testing.T) {
 	sp := dex.All()[0]
 	s1 := StatsFor(sp)

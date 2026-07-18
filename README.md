@@ -189,15 +189,23 @@ arena com controle remoto e comande cada lado por um socket, a uma cadência de
 ~250ms (um LLM não reage a 60fps):
 
 ```sh
-pokeclaude arena --control remote          # abre o socket de controle
+# para ver a janela, compile com raylib; senão roda em texto (tempo real)
+go build -tags raylib -o pokeclaude ./cmd/pokeclaude
+
+pokeclaude arena --control remote          # abre o socket e AGUARDA comandos
+pokeclaude arena-cmd --side A --action avancar
 pokeclaude arena-cmd --side A --action leve
 pokeclaude arena-cmd --side B --action esquiva
 ```
 
 Ações: `avancar`, `recuar`, `leve`, `pesado`, `especial`, `bloquear`,
 `esquiva`, `super`. Um agente lê o estado do jogo e decide a próxima ação —
-duas sessões de IA podem se enfrentar. Sem comandos, um **bot heurístico**
-determinístico assume, o que mantém as simulações reproduzíveis (e testáveis).
+duas sessões de IA podem se enfrentar.
+
+No modo `remote` os lutadores **ficam parados aguardando comandos** e **não há
+timer de round** — a luta só termina por **K.O.** (nada roda sozinho). Já o
+`--control bot` (padrão) usa um **bot heurístico** determinístico nos dois lados,
+o que mantém as simulações reproduzíveis (e testáveis).
 
 > **Arte:** lutadores e efeitos são **procedurais e originais** (barras de vida
 > estilo arcade, hit-sparks, screen shake, "ROUND 1 — LUTAR!", "K.O.",

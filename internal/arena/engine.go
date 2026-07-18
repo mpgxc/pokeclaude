@@ -34,9 +34,10 @@ const (
 
 // Config parameters a match.
 type Config struct {
-	Width       float64 // arena width in logical units
-	RoundsToWin int     // wins needed to take the match (best of 2N-1)
-	Seed        int64
+	Width        float64 // arena width in logical units
+	RoundsToWin  int     // wins needed to take the match (best of 2N-1)
+	Seed         int64
+	RoundSeconds float64 // per-round time limit; 0 = default, negative = no limit
 }
 
 func (c Config) withDefaults() Config {
@@ -45,6 +46,9 @@ func (c Config) withDefaults() Config {
 	}
 	if c.RoundsToWin <= 0 {
 		c.RoundsToWin = 2
+	}
+	if c.RoundSeconds == 0 {
+		c.RoundSeconds = roundTime
 	}
 	return c
 }
@@ -62,13 +66,14 @@ type Arena struct {
 	A, B  *Fighter
 	rng   *rand.Rand
 
-	round  int
-	scoreA int
-	scoreB int
-	phase  MatchPhase
-	phaseT float64
-	roundT float64
-	decAcc float64
+	round   int
+	scoreA  int
+	scoreB  int
+	phase   MatchPhase
+	phaseT  float64
+	roundT  float64
+	decAcc  float64
+	endless bool // no round time limit (waits for input; only KO ends a round)
 
 	events   []string // rolling, for the HUD
 	allLog   []string // full history, for headless output
@@ -86,12 +91,13 @@ func Build(cfg Config, spA, spB dex.Species, ctrlA, ctrlB Controller) *Arena {
 	b := newFighter(1, spB)
 	a.Ctrl, b.Ctrl = ctrlA, ctrlB
 	m := &Arena{
-		cfg:    cfg,
-		Width:  cfg.Width,
-		A:      a,
-		B:      b,
-		rng:    rand.New(rand.NewSource(cfg.Seed)),
-		winner: -1,
+		cfg:     cfg,
+		Width:   cfg.Width,
+		A:       a,
+		B:       b,
+		rng:     rand.New(rand.NewSource(cfg.Seed)),
+		winner:  -1,
+		endless: cfg.RoundSeconds < 0,
 	}
 	m.startRound(1)
 	return m
@@ -107,7 +113,11 @@ func (m *Arena) startRound(n int) {
 	m.tookDmg = [2]bool{}
 	m.phase = PhaseIntro
 	m.phaseT = introTime
-	m.roundT = roundTime
+	if m.endless {
+		m.roundT = 99 // display only; never decremented
+	} else {
+		m.roundT = m.cfg.RoundSeconds
+	}
 	m.announce = fmt.Sprintf("ROUND %d — LUTAR!", n)
 }
 
@@ -153,11 +163,13 @@ func (m *Arena) step(dt float64) {
 }
 
 func (m *Arena) fightStep(dt float64) {
-	// round timer
-	m.roundT -= dt
-	if m.roundT <= 0 {
-		m.endRoundByTimeout()
-		return
+	// round timer (skipped in endless mode: the round only ends on a K.O.)
+	if !m.endless {
+		m.roundT -= dt
+		if m.roundT <= 0 {
+			m.endRoundByTimeout()
+			return
+		}
 	}
 
 	// poll controllers at the decision cadence
