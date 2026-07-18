@@ -67,6 +67,8 @@ e use o Claude Code normalmente em outro terminal — os Pokémon aparecem sozin
 | `pokeclaude install` | injeta os hooks em `~/.claude/settings.json` (com backup) |
 | `pokeclaude uninstall` | remove os hooks, preservando hooks de terceiros |
 | `pokeclaude doctor` | valida socket, settings e tamanho do terminal |
+| `pokeclaude arena` | **modo game**: rinha 1v1 estilo Mortal Kombat entre dois pets |
+| `pokeclaude arena-cmd` | envia um comando de controle para uma arena em execução |
 
 ### Teclas
 
@@ -128,6 +130,51 @@ O Pokémon de cada sessão é **determinístico**: o mesmo `session_id` sempre v
 a mesma espécie. Subagentes (ferramenta `Task`) aparecem como sprites reduzidos
 na mesma zona do pai.
 
+## Modo Game — Arena 🥊
+
+Uma **rinha 1v1 estilo Mortal Kombat** entre dois pets-galos. Cada lutador tem
+**vida (HP)**, **mana**, **vidas/rounds** (melhor de 3) e stats derivados da
+espécie: **ataque, defesa, esquiva/velocidade, combo**. As ações — **soco leve,
+chute pesado, especial** (gasta mana), **bloqueio**, **esquiva** (i-frames) e
+**FINALIZAÇÃO** (super, com barra cheia) — têm *frame data* (startup/active/
+recovery), então dá pra encaixar **combos** de verdade.
+
+```sh
+# rinha bot vs bot, roda em texto (headless) em qualquer lugar
+pokeclaude arena --seed 3
+pokeclaude arena --a pikachu --b charmander --slow
+
+# render gráfico (raylib) — exige compilar com a tag e um display
+go build -tags raylib -o pokeclaude ./cmd/pokeclaude
+./pokeclaude arena
+```
+
+### Controle por agentes de IA (IA × IA)
+
+A ideia central: **um agente de IA controla o galo** injetando comandos. Suba a
+arena com controle remoto e comande cada lado por um socket, a uma cadência de
+~250ms (um LLM não reage a 60fps):
+
+```sh
+pokeclaude arena --control remote          # abre o socket de controle
+pokeclaude arena-cmd --side A --action leve
+pokeclaude arena-cmd --side B --action esquiva
+```
+
+Ações: `avancar`, `recuar`, `leve`, `pesado`, `especial`, `bloquear`,
+`esquiva`, `super`. Um agente lê o estado do jogo e decide a próxima ação —
+duas sessões de IA podem se enfrentar. Sem comandos, um **bot heurístico**
+determinístico assume, o que mantém as simulações reproduzíveis (e testáveis).
+
+> **Arte:** lutadores e efeitos são **procedurais e originais** (barras de vida
+> estilo arcade, hit-sparks, screen shake, "ROUND 1 — LUTAR!", "K.O.",
+> "VITÓRIA IMPECÁVEL"). Nada de arte copiada.
+>
+> **Build gráfico:** o renderer raylib fica atrás da build tag `raylib` e
+> precisa de libs de sistema (OpenGL/X11/Wayland). O núcleo (engine) compila e
+> roda **headless** sem nada disso. Não rode `go mod tidy` sem `-tags raylib`,
+> senão a dependência do raylib é removida do `go.mod`.
+
 ## Arquitetura
 
 ```
@@ -141,6 +188,9 @@ internal/dex/         # espécies + sprites embutidos (embed.FS)
 internal/render/      # framebuffer, sprites, balões, HUD, modo compacto
                       #   space.go = renderer do Space Drift (starfield, naves, warp)
 internal/tui/         # bubbletea: game loop 20fps
+internal/arena/       # modo game: engine de combate puro (determinístico, testável)
+                      #   controllers (bot + remoto), socket de controle, snapshot
+internal/arena/rl/    # renderer raylib da Arena (//go:build raylib)
 assets/sprites/       # sprites ASCII originais (.txt)
 ```
 

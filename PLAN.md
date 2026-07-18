@@ -374,3 +374,54 @@ entre os modos; só a camada de movimento e de render muda.
 `internal/render/space.go` desenha tudo (naves orientadas por velocidade,
 chama de propulsor, rastro de dobra `=`, explosões, cometas com cauda) com
 clipping na área do mapa.
+
+---
+
+## 18. Modo Game — Arena (rinha estilo Mortal Kombat)
+
+Modo **gráfico** (raylib), separado do TUI: subcomando `pokeclaude arena`. Segue
+o mesmo princípio de separar **engine** de **render** — o motor de combate é
+Go puro, determinístico e testável headless; o raylib fica atrás da build tag
+`raylib`.
+
+### Engine (`internal/arena/`, puro)
+
+- **Fighter** com stats derivados do dex (determinísticos por espécie):
+  `Ataque`, `Defesa`, `Esquiva/Velocidade`, `Combo`, **Vida (HP)**, **Mana**,
+  **Vidas/Rounds** (melhor de 2N-1).
+- **Máquina de estados:** Idle, Andar, Ataque (startup→active→recovery),
+  Bloqueio, Esquiva (i-frames), Hitstun, K.O.
+- **Golpes com frame data** (`move.go`): leve, pesado, especial (gasta mana),
+  finalização (super, gasta barra). Reach, knockback, hitstun, chip no bloqueio.
+- **Resolução de hit:** hitbox ativa vs. distância; esquiva com i-frames anula;
+  bloqueio reduz a dano de chip; combos encadeiam enquanto o alvo está em
+  hitstun (com *scaling* de dano influenciado pelo stat Combo).
+- **Fluxo:** intro → luta (timer) → round over → próximo round / fim de partida;
+  vitória impecável quando o vencedor não toma dano.
+- Passo fixo (`Advance` acumula em `fixedDT`), determinístico; `View()` gera o
+  snapshot de render; `Log()` guarda o histórico para o modo texto.
+
+### Controle (`controller.go`, `control.go`)
+
+- Interface `Controller` polada a **~250ms** (`decisionInterval`) — não a 60fps,
+  para caber a latência de um LLM.
+- `BotController` — heurístico determinístico (oponente/teste).
+- `RemoteController` — alimentado de fora; ações one-shot (ataques/esquiva/super)
+  disparam uma vez, ações "seguradas" (andar/bloquear) persistem.
+- `ControlServer` — socket unix (`pokeclaude-arena.sock`) que roteia comandos
+  `{side, action}` para o `RemoteController` do lado. CLI: `pokeclaude arena-cmd`.
+  Assim um **agente de IA** gerencia o galo injetando comandos (IA × IA).
+
+### Render (`internal/arena/rl/`, `//go:build raylib`)
+
+Apresentação estilo MK, **procedural e original**: lutadores desenhados com
+formas (pose por estado: ataque, bloqueio, esquiva com after-images, hitstun,
+K.O.), barras de HP/mana/super, pips de round, timer, hit-sparks, screen shake,
+e anúncios ("ROUND 1 — LUTAR!", "K.O.", "VITÓRIA IMPECÁVEL").
+
+### Empacotamento
+
+- `pokeclaude arena` roda **headless** (texto) por padrão neste/qualquer
+  ambiente; com `-tags raylib` (+ libs OpenGL/X11/Wayland) abre a janela.
+- Engine e testes compilam sem raylib. **Não rodar `go mod tidy`** sem
+  `-tags raylib`, senão a dependência do raylib some do `go.mod`.
