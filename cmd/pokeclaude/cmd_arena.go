@@ -33,9 +33,15 @@ func arenaCmd() *cobra.Command {
 			spA := pickSpecies(aName, all[0])
 			spB := pickSpecies(bName, all[1%len(all)])
 
+			cfg := arena.Config{Seed: seed, RoundsToWin: rounds}
+			remote := control == "remote"
+
 			var ctrlA, ctrlB arena.Controller
 			var server *arena.ControlServer
-			if control == "remote" {
+			if remote {
+				// no round timer: the fighters idle and wait for commands,
+				// so the match only ends on a K.O., not by itself.
+				cfg.RoundSeconds = -1
 				ra, rb := arena.NewRemote("A"), arena.NewRemote("B")
 				ctrlA, ctrlB = ra, rb
 				srv, err := arena.NewControlServer(arena.ControlSocketPath(), ra, rb)
@@ -46,21 +52,26 @@ func arenaCmd() *cobra.Command {
 				go func() { _ = srv.Serve() }()
 				defer srv.Close()
 				fmt.Printf("controle remoto ativo — socket: %s\n", arena.ControlSocketPath())
-				fmt.Println("comande com: pokeclaude arena-cmd --side A --action leve")
+				fmt.Println("os lutadores aguardam comandos. Ex.:")
+				fmt.Println("  pokeclaude arena-cmd --side A --action avancar")
+				fmt.Println("  pokeclaude arena-cmd --side A --action leve")
+				fmt.Println("  pokeclaude arena-cmd --side B --action esquiva")
 			} else {
 				ctrlA = arena.NewBot(seed+1, 0.55)
 				ctrlB = arena.NewBot(seed+2, 0.55)
 			}
 
-			m := arena.Build(arena.Config{Seed: seed, RoundsToWin: rounds}, spA, spB, ctrlA, ctrlB)
+			m := arena.Build(cfg, spA, spB, ctrlA, ctrlB)
 
 			if graphicsBuilt && !headless {
 				return runGraphics(m, server)
 			}
 			if !graphicsBuilt && !headless {
-				fmt.Println("(sem raylib — rodando headless; recompile com `-tags raylib` para o gráfico)")
+				fmt.Println("(sem raylib — rodando em modo texto; para a janela gráfica, compile com `-tags raylib`)")
 			}
-			runHeadlessArena(m, slow, os.Stdout)
+			// remote mode must run in real time so commands can arrive; the bot
+			// demo can fast-forward unless --slow is set.
+			runHeadlessArena(m, slow || remote, os.Stdout)
 			return nil
 		},
 	}
@@ -112,18 +123,21 @@ func pickSpecies(name string, fallback dex.Species) dex.Species {
 	return dex.SpeciesFor(name)
 }
 
-// runHeadlessArena simulates the match and streams the fight log to out.
-func runHeadlessArena(m *arena.Arena, slow bool, out io.Writer) {
+// runHeadlessArena simulates the match and streams the fight log to out. When
+// realtime is set it paces the simulation to wall-clock time (so remote control
+// commands can arrive and the fight can be followed live).
+func runHeadlessArena(m *arena.Arena, realtime bool, out io.Writer) {
 	fmt.Fprintln(out, vsBanner(m))
+	const frame = 1.0 / 60.0
 	printed := 0
 	for !m.Over() {
-		m.Advance(1.0 / 60.0)
+		m.Advance(frame)
 		log := m.Log()
 		for ; printed < len(log); printed++ {
 			fmt.Fprintln(out, "  • "+log[printed])
 		}
-		if slow {
-			time.Sleep(45 * time.Millisecond)
+		if realtime {
+			time.Sleep(time.Second / 60)
 		}
 	}
 	sa, sb := m.Score()
