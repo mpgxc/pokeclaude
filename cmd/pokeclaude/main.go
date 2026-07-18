@@ -33,6 +33,8 @@ func rootCmd() *cobra.Command {
 		installCmd(),
 		uninstallCmd(),
 		doctorCmd(),
+		arenaCmd(),
+		arenaCmdCmd(),
 	)
 	return root
 }
