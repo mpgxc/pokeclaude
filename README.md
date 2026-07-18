@@ -24,6 +24,39 @@ de trabalho — com um balão de pensamento mostrando a tarefa em execução.
 ╚══════════════════════════════════════════════════════════════╝
 ```
 
+## Instalação rápida
+
+Requer **Go 1.25+** e um terminal com UTF-8 e cores.
+
+```sh
+git clone https://github.com/mpgxc/pokeclaude.git
+cd pokeclaude
+
+make install     # compila, instala em /usr/local/bin e injeta os hooks
+pokeclaude doctor
+```
+
+Depois, num terminal dedicado:
+
+```sh
+pokeclaude tui   # e use o Claude Code normalmente em outro terminal
+```
+
+Sem `make`? Faça na mão:
+
+```sh
+go build -o pokeclaude ./cmd/pokeclaude
+sudo mv pokeclaude /usr/local/bin/
+pokeclaude install
+```
+
+Atalhos do `make` (rode `make help` para a lista): `build`, `install`,
+`uninstall`, `tui`, `demo`, `arena`, `build-gfx` (Arena gráfica), `test`,
+`race`, `check`, `clean`. Para remover tudo: `make uninstall`.
+
+> Ambientes **headless/remotos** não abrem a TUI nem a janela gráfica (faltam
+> terminal/display) — rode numa máquina com terminal real.
+
 ## Como funciona
 
 ```
